@@ -1,3 +1,12 @@
+---
+title: SHL Assessment Recommendation API
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_file: api.py
+---
+
 # SHL Assessment Recommendation System
 
 A semantic similarity-based recommendation system that matches job descriptions to relevant SHL Individual Test Solutions assessments using state-of-the-art NLP techniques.
