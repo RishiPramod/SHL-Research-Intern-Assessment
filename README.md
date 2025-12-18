@@ -1,8 +1,8 @@
 # SHL Assessment Recommendation System
 
-A semantic similarity-based recommendation system that matches job descriptions to relevant SHL Individual Test Solutions assessments.
+A semantic similarity-based recommendation system that matches job descriptions to relevant SHL Individual Test Solutions assessments using state-of-the-art NLP techniques.
 
-## Features
+## 🚀 Features
 
 - **Semantic Search**: Uses sentence transformers for intelligent job description matching
 - **Fast API**: Pre-computed embeddings for sub-200ms response times
@@ -37,35 +37,50 @@ curl -X POST "http://localhost:8000/recommend" \
   -d '{"query": "Software Engineer role requiring strong problem solving"}'
 ```
 
-## Project Structure
+## 📁 Project Structure
 
 ```text
 .
-├── api.py                 # FastAPI REST API with web UI
+├── api.py                      # FastAPI REST API with web UI
+├── config.py                   # Configuration constants
+├── start.py                    # Startup script for Railway
+├── generate_predictions.py     # Generate predictions CSV for submission
+│
 ├── data/
-│   ├── catalogue.csv      # Assessment catalogue
-│   └── catalogue.py       # Catalogue loader
+│   ├── catalogue.csv           # Assessment catalogue (377+ assessments)
+│   └── catalogue.py           # Catalogue loader with data processing
+│
 ├── models/
-│   └── embedding_model.py # Sentence transformer model
+│   └── embedding_model.py     # Sentence transformer model loader
+│
 ├── recommender/
-│   └── engine.py          # Core recommendation engine
+│   └── engine.py              # Core recommendation algorithm
+│
 ├── templates/
-│   └── index.html         # Web UI template
+│   └── index.html             # Web UI template (Jinja2)
+│
 ├── utils/
-│   └── text_utils.py      # URL extraction utilities
-├── requirements.txt       # Python dependencies
-├── Procfile              # Railway deployment
-├── railway.json          # Railway configuration
-├── start.py              # Startup script
-├── generate_predictions.py # Generate predictions CSV
-└── APPROACH_DOCUMENT.md   # 2-page approach document
+│   └── text_utils.py          # URL extraction and text validation
+│
+├── requirements.txt            # Python dependencies
+├── Procfile                   # Railway deployment configuration
+├── railway.json               # Railway platform configuration
+├── runtime.txt                # Python version specification
+│
+├── ARCHITECTURE.md            # System architecture documentation
+├── APPROACH_DOCUMENT.md       # 2-page approach and optimization document
+└── README.md                  # This file
 ```
 
-## API Endpoints
+## 🔌 API Endpoints
 
-### POST /recommend
+### `POST /recommend`
 
-Get assessment recommendations for a job description.
+Get assessment recommendations for a job description or natural language query.
+
+**Endpoint**: `/recommend`  
+**Method**: `POST`  
+**Content-Type**: `application/json`
 
 **Request**:
 
@@ -93,9 +108,12 @@ Get assessment recommendations for a job description.
 }
 ```
 
-### GET /health
+### `GET /health`
 
-Health check endpoint.
+Health check endpoint to verify API is operational.
+
+**Endpoint**: `/health`  
+**Method**: `GET`
 
 **Response**:
 
@@ -105,25 +123,87 @@ Health check endpoint.
 }
 ```
 
-### GET /
+### `GET /`
 
-Web UI for interactive testing.
+Web UI for interactive testing and demonstration.
 
-## Deployment
+**Endpoint**: `/`  
+**Method**: `GET`  
+**Response**: HTML page with interactive recommendation interface
+
+## 🚀 Deployment
 
 Deploy on Railway by connecting your GitHub repository. The app will auto-deploy using the `Procfile` and `railway.json` configuration.
 
-## Performance
+**Deployment Steps:**
+
+1. Connect your GitHub repository to Railway
+2. Railway automatically detects `Procfile` and `railway.json`
+3. Dependencies are installed from `requirements.txt`
+4. Application starts using `start.py` which reads the `PORT` environment variable
+5. Model and catalogue are loaded at startup (2-3 seconds)
+6. API is ready to serve requests
+
+## ⚡ Performance
 
 - **Latency**: 50-150ms per query (warm)
 - **Cold Start**: 2-3 seconds (one-time model loading)
 - **Accuracy**: High-quality semantic matching
 - **Scalability**: Tested up to 50 concurrent requests
 
-## Documentation
+## 📚 Documentation
 
+- **Architecture**: `ARCHITECTURE.md` - System architecture, data flow diagrams, and technical design
 - **Approach Document**: `APPROACH_DOCUMENT.md` - Complete 2-page approach and optimization details
 
-## License
+## 🏗️ System Architecture
 
-This project is part of the SHL Research Intern Assessment.
+The system follows a modular architecture with clear separation of concerns:
+
+```mermaid
+graph LR
+    A[Client] -->|HTTP| B[FastAPI API]
+    B --> C[Recommendation Engine]
+    C --> D[Embedding Model]
+    C --> E[Assessment Catalogue]
+    D --> F[Similarity Search]
+    E --> F
+    F --> G[Balanced Selection]
+    G --> B
+    B --> A
+    
+    style B fill:#4a90e2
+    style C fill:#50c878
+    style D fill:#ffa500
+    style E fill:#ff6b6b
+```
+
+For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## 📊 Recommendation Flow
+
+```mermaid
+flowchart TD
+    A[Job Description] --> B{Is URL?}
+    B -->|Yes| C[Extract Text]
+    B -->|No| D[Use Text Directly]
+    C --> D
+    D --> E[Generate Embedding]
+    E --> F[Compute Similarity]
+    F --> G[Apply Filters]
+    G --> H[Balance by Type]
+    H --> I[Return Top 5-10]
+    
+    style E fill:#4a90e2
+    style F fill:#50c878
+    style I fill:#ff6b6b
+```
+
+## 🔧 Technology Stack
+
+- **Framework**: FastAPI (Python 3.10+)
+- **ML Model**: Sentence Transformers (`all-MiniLM-L6-v2`)
+- **Similarity**: Cosine similarity on normalized embeddings
+- **Data Processing**: pandas, numpy
+- **Web Scraping**: BeautifulSoup, requests
+- **Deployment**: Railway

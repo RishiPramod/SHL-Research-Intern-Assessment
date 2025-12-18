@@ -1,6 +1,14 @@
-from typing import Iterable, List, Optional
+"""
+Core recommendation engine for SHL Assessment Recommendation System.
+
+This module implements the semantic similarity-based recommendation algorithm
+that matches job descriptions to relevant SHL Individual Test Solutions assessments.
+"""
+from typing import Dict, Iterable, List, Optional
 
 import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from utils.text_utils import extract_text_from_url, is_likely_url
@@ -26,7 +34,11 @@ def _maybe_expand_query_text(job_description: str) -> str:
     return extracted if extracted else job_description
 
 
-def _bucket_by_test_type(catalogue, similarities: np.ndarray, needed_types: List[str]):
+def _bucket_by_test_type(
+    catalogue: pd.DataFrame,
+    similarities: np.ndarray,
+    needed_types: List[str]
+) -> Dict[str, List[int]]:
     """
     Bucket ranked indices by whether their test_type overlaps with
     the requested / inferred SHL test type categories.
@@ -53,7 +65,7 @@ def _bucket_by_test_type(catalogue, similarities: np.ndarray, needed_types: List
     return buckets
 
 
-def _balanced_select(buckets, top_k: int) -> List[int]:
+def _balanced_select(buckets: Dict[str, List[int]], top_k: int) -> List[int]:
     """
     Round‑robin selection from buckets to ensure a balanced mix
     across the requested test types, with a fallback to the "other"
@@ -105,23 +117,47 @@ def _infer_needed_test_types(query: str) -> List[str]:
 
 
 def recommend_assessments(
-    catalogue,
-    assessment_embeddings,
-    model,
+    catalogue: pd.DataFrame,
+    assessment_embeddings: np.ndarray,
+    model: SentenceTransformer,
     job_description: str,
     top_k: int = 3,
     max_duration: Optional[int] = None,
     preferred_type: Optional[str] = None,
-):
+) -> pd.DataFrame:
     """
-    Core recommendation function used by both the Streamlit app
-    and the HTTP API.
-
-    It:
-      1. Embeds the query (or JD URL text)
-      2. Computes cosine similarity against all assessments
-      3. Applies duration and type filters
-      4. Balances results across relevant SHL test_type buckets
+    Core recommendation function for matching job descriptions to assessments.
+    
+    This function implements a semantic similarity-based recommendation algorithm
+    with the following steps:
+    1. Embeds the query (or extracts text from JD URL)
+    2. Computes cosine similarity against all pre-computed assessment embeddings
+    3. Applies duration and type filters if specified
+    4. Balances results across relevant SHL test_type buckets for diversity
+    
+    Args:
+        catalogue: DataFrame containing assessment metadata.
+        assessment_embeddings: Pre-computed embeddings for all assessments (numpy array).
+        model: Sentence transformer model for encoding queries.
+        job_description: Natural language query or URL to job description.
+        top_k: Maximum number of recommendations to return (default: 3).
+        max_duration: Optional maximum assessment duration in minutes.
+        preferred_type: Optional preferred assessment type filter.
+        
+    Returns:
+        pd.DataFrame: DataFrame with recommended assessments, sorted by relevance_score.
+        Columns include: url, name, description, duration, test_type, relevance_score, etc.
+        
+    Example:
+        >>> results = recommend_assessments(
+        ...     catalogue=df,
+        ...     assessment_embeddings=embeddings,
+        ...     model=model,
+        ...     job_description="Java developer",
+        ...     top_k=10
+        ... )
+        >>> len(results)
+        10
     """
     # 1. Prepare query text
     query_text = _maybe_expand_query_text(job_description)

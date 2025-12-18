@@ -1,10 +1,18 @@
+"""
+Catalogue data loader for SHL Individual Test Solutions.
+
+This module handles loading and processing of the assessment catalogue from CSV,
+including parsing test types and adding derived fields for recommendation.
+"""
+import logging
 from pathlib import Path
 from typing import List
 
 import pandas as pd
 
+import config
 
-CATALOGUE_CSV = Path("data") / "catalogue.csv"
+logger = logging.getLogger(__name__)
 
 
 def _load_sample_catalogue() -> pd.DataFrame:
@@ -77,33 +85,68 @@ def _add_derived_fields(df: pd.DataFrame) -> None:
 
 def load_catalogue() -> pd.DataFrame:
     """
-    Load the SHL Individual Test Solutions catalogue.
-
+    Load the SHL Individual Test Solutions catalogue from CSV.
+    
     Expected CSV columns (at minimum):
-        - url
-        - name
-        - description
-        - adaptive_support
-        - duration   (minutes, integer)
-        - remote_support
-        - test_type  (pipe‑separated string, e.g. "Knowledge & Skills|Personality & Behavior")
-
-    The function will also add convenient helper columns like
-    - duration_minutes
-    - combined_text
+        - url: Assessment URL
+        - name: Assessment name
+        - description: Assessment description
+        - adaptive_support: "Yes" or "No"
+        - duration: Duration in minutes (integer)
+        - remote_support: "Yes" or "No"
+        - test_type: Pipe-separated string (e.g. "Knowledge & Skills|Personality & Behavior")
+    
+    The function automatically adds helper columns:
+        - duration_minutes: Normalized duration field
+        - combined_text: Concatenated text for embedding
+        - type: Primary test type (first from test_type list)
+        - skills: Skills field (empty if not present)
+    
+    Returns:
+        pd.DataFrame: Catalogue with all assessments and derived fields.
+        
+    Raises:
+        FileNotFoundError: If catalogue CSV doesn't exist and no sample data available.
+        
+    Example:
+        >>> df = load_catalogue()
+        >>> len(df) >= 377
+        True
+        >>> "combined_text" in df.columns
+        True
     """
-    if not CATALOGUE_CSV.exists():
-        # Fall back to a tiny in‑memory catalogue so that the UI
-        # still works while the user is developing the scraper.
+    if not config.CATALOGUE_CSV_PATH.exists():
+        logger.warning(
+            f"Catalogue CSV not found at {config.CATALOGUE_CSV_PATH}. "
+            "Using sample catalogue."
+        )
         return _load_sample_catalogue()
 
-    df = pd.read_csv(CATALOGUE_CSV)
+    try:
+        df = pd.read_csv(config.CATALOGUE_CSV_PATH)
+        logger.info(f"Loaded catalogue from {config.CATALOGUE_CSV_PATH}")
+        
+        if len(df) == 0:
+            logger.error("Catalogue CSV is empty")
+            return _load_sample_catalogue()
+        
+        # Normalize test_type into a list[str]
+        if "test_type" in df.columns:
+            df["test_type"] = df["test_type"].apply(_parse_test_type)
+        else:
+            logger.warning("test_type column not found, initializing empty lists")
+            df["test_type"] = [[] for _ in range(len(df))]
 
-    # Normalise test_type into a list[str]
-    if "test_type" in df.columns:
-        df["test_type"] = df["test_type"].apply(_parse_test_type)
-    else:
-        df["test_type"] = [[] for _ in range(len(df))]
-
-    _add_derived_fields(df)
-    return df
+        _add_derived_fields(df)
+        
+        logger.info(
+            f"Catalogue loaded successfully: {len(df)} assessments, "
+            f"{len(df.columns)} columns"
+        )
+        
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error loading catalogue: {e}", exc_info=True)
+        logger.warning("Falling back to sample catalogue")
+        return _load_sample_catalogue()
