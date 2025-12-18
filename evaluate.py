@@ -60,6 +60,16 @@ def evaluate_mean_recall_at_k(k=10, train_data_path=None):
     model = load_embedding_model()
     catalogue = load_catalogue()
     
+    # Check catalogue size
+    print(f"   Catalogue contains {len(catalogue)} assessments")
+    if len(catalogue) < 377:
+        print(f"   WARNING: Catalogue has only {len(catalogue)} assessments.")
+        print("   Expected at least 377 Individual Test Solutions.")
+        print("   Please ensure you have scraped the SHL website catalogue.")
+    if len(catalogue) < 10:
+        print("   ERROR: Catalogue too small for meaningful evaluation.")
+        return None
+    
     # Pre-compute embeddings
     print("2. Pre-computing embeddings...")
     assessment_embeddings = model.encode(

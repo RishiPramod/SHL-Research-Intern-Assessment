@@ -14,6 +14,16 @@ def generate_predictions_csv():
     model = load_embedding_model()
     catalogue = load_catalogue()
     
+    # Check catalogue size
+    print(f"Catalogue contains {len(catalogue)} assessments")
+    if len(catalogue) < 377:
+        print(f"WARNING: Catalogue has only {len(catalogue)} assessments.")
+        print("Expected at least 377 Individual Test Solutions.")
+        print("Please ensure you have scraped the SHL website catalogue.")
+        if len(catalogue) < 10:
+            print("ERROR: Catalogue too small. Cannot generate proper recommendations.")
+            return None
+    
     # Pre-compute embeddings
     print("Pre-computing embeddings...")
     assessment_embeddings = model.encode(
@@ -89,7 +99,6 @@ def generate_predictions_csv():
             
             # Combine results
             if additional_results:
-                import pandas as pd
                 additional_df = pd.DataFrame(additional_results)
                 results = pd.concat([results, additional_df], ignore_index=True)
             
