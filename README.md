@@ -145,6 +145,7 @@ Deploy on Railway by connecting your GitHub repository. The app will auto-deploy
 6. API is ready to serve requests
 
 **Build Optimization:**
+
 - Uses CPU-only PyTorch to reduce image size from ~8GB to ~2-3GB
 - Excludes unnecessary files via `.railwayignore`
 - Uses `--no-cache-dir` for pip to minimize build artifacts
