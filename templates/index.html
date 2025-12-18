@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SHL Assessment Recommendation Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111827;
+        background: #f3f4f6;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+      }
+
+      .container {
+        max-width: 960px;
+        width: 100%;
+        padding: 24px 16px 40px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 4px;
+      }
+
+      .subtitle {
+        text-align: center;
+        margin: 0 0 24px;
+        color: #4b5563;
+        font-size: 0.95rem;
+      }
+
+      .card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 20px 24px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+        border: 1px solid #e5e7eb;
+      }
+
+      label {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 6px;
+        color: #111827;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 120px;
+        resize: vertical;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 1px #6366f1;
+      }
+
+      .controls {
+        display: flex;
+        gap: 16px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+      }
+
+      select,
+      input[type="number"] {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        font-size: 0.9rem;
+      }
+
+      .controls-group {
+        flex: 1 1 200px;
+      }
+
+      button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 18px;
+        margin-top: 18px;
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        color: white;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+      }
+
+      button:disabled {
+        opacity: 0.7;
+        cursor: default;
+        box-shadow: none;
+      }
+
+      .status {
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: #6b7280;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 24px;
+        background: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f9fafb;
+        font-weight: 600;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        margin: 0 4px 4px 0;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-right: 6px;
+      }
+
+      .pill-yes {
+        background: #ecfdf5;
+        color: #166534;
+      }
+
+      .pill-no {
+        background: #fef2f2;
+        color: #b91c1c;
+      }
+
+      a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>SHL Assessment Recommendation Engine</h1>
+      <p class="subtitle">
+        Paste a job description or a JD URL and get the most relevant SHL Individual Test Solutions.
+      </p>
+
+      <div class="card">
+        <label for="query">Job Description or JD URL</label>
+        <textarea
+          id="query"
+          placeholder="e.g. Need a Java developer who is good in collaborating with external teams and stakeholders."
+        ></textarea>
+
+        <div class="controls">
+          <div class="controls-group">
+            <label for="num-results">Number of recommendations</label>
+            <input
+              id="num-results"
+              type="number"
+              min="1"
+              max="10"
+              value="5"
+            />
+          </div>
+        </div>
+
+        <button id="run-btn">Recommend assessments</button>
+        <div id="status" class="status"></div>
+      </div>
+
+      <div id="results"></div>
+    </div>
+
+    <script>
+      const btn = document.getElementById("run-btn");
+      const statusEl = document.getElementById("status");
+      const resultsEl = document.getElementById("results");
+
+      async function runRecommend() {
+        const query = document.getElementById("query").value.trim();
+        const k = parseInt(document.getElementById("num-results").value || "5", 10);
+
+        if (!query) {
+          statusEl.textContent = "Please enter a query or JD text.";
+          return;
+        }
+
+        btn.disabled = true;
+        statusEl.textContent = "Contacting recommendation API...";
+        resultsEl.innerHTML = "";
+
+        try {
+          const resp = await fetch("/recommend", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query }),
+          });
+
+          if (!resp.ok) {
+            const detail = await resp.json().catch(() => ({}));
+            throw new Error(detail.detail || "API error");
+          }
+
+          const data = await resp.json();
+          const all = data.recommended_assessments || [];
+          const recs = all.slice(0, k);
+
+          if (!recs.length) {
+            statusEl.textContent = "No recommendations returned.";
+            return;
+          }
+
+          statusEl.textContent = `Showing ${recs.length} recommendation(s).`;
+
+          const rows = recs
+            .map(
+              (r) => `
+                <tr>
+                  <td>${r.name}</td>
+                  <td>
+                    <a href="${r.url}" target="_blank" rel="noopener noreferrer">
+                      ${r.url}
+                    </a>
+                  </td>
+                  <td>${r.description || ""}</td>
+                  <td>${(r.test_type || [])
+                    .map((t) => `<span class="chip">${t}</span>`)
+                    .join("")}</td>
+                  <td>${r.duration} min</td>
+                  <td>
+                    <span class="pill ${r.remote_support === "Yes" ? "pill-yes" : "pill-no"}">
+                      Remote: ${r.remote_support}
+                    </span>
+                    <span class="pill ${r.adaptive_support === "Yes" ? "pill-yes" : "pill-no"}">
+                      Adaptive: ${r.adaptive_support}
+                    </span>
+                  </td>
+                </tr>
+              `
+            )
+            .join("");
+
+          resultsEl.innerHTML = `
+            <table>
+              <thead>
+                <tr>
+                  <th>Assessment name</th>
+                  <th>URL</th>
+                  <th>Description</th>
+                  <th>Test Type</th>
+                  <th>Duration</th>
+                  <th>Support</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          `;
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent = "Failed to get recommendations: " + err.message;
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      btn.addEventListener("click", runRecommend);
+    </script>
+  </body>
+</html>
+
+

@@ -1,0 +1,12 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.2.2+cpu
+numpy<2.0
+sentence-transformers==2.7.0
+scikit-learn
+pandas
+fastapi
+uvicorn
+requests
+beautifulsoup4
+jinja2

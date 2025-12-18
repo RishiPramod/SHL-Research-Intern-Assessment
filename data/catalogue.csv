@@ -1,0 +1,3 @@
+url,name,description,adaptive_support,remote_support,duration,test_type
+https://example.com/general-ability-test,General Ability Test,"Measures critical thinking, problem solving, and numerical reasoning ability.",No,Yes,36,"Ability & Aptitude|Knowledge & Skills"
+https://example.com/opq-personality,OPQ Personality Questionnaire,"Evaluates workplace personality traits and behavioral preferences.",No,Yes,25,"Personality & Behavior"
