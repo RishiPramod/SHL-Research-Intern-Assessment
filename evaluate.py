@@ -14,6 +14,27 @@ from models.embedding_model import load_embedding_model
 from recommender.engine import recommend_assessments
 
 
+def normalize_url(url):
+    """
+    Normalize URL for comparison by extracting the assessment slug.
+    
+    Handles both formats:
+    - /products/product-catalog/view/assessment-name/
+    - /solutions/products/product-catalog/view/assessment-name/
+    """
+    if pd.isna(url) or not url:
+        return None
+    url = str(url).strip()
+    # Extract the slug (last part before trailing slash)
+    # e.g., "automata-fix-new" from ".../view/automata-fix-new/"
+    if '/view/' in url:
+        parts = url.split('/view/')
+        if len(parts) > 1:
+            slug = parts[1].rstrip('/')
+            return slug.lower()
+    return url.lower()
+
+
 def calculate_recall_at_k(recommended_urls, relevant_urls, k=10):
     """
     Calculate Recall@K for a single query.
@@ -29,14 +50,15 @@ def calculate_recall_at_k(recommended_urls, relevant_urls, k=10):
     if not relevant_urls:
         return 0.0
     
-    # Take top k recommendations
-    top_k_recommended = recommended_urls[:k]
+    # Normalize URLs for comparison
+    normalized_relevant = {normalize_url(url) for url in relevant_urls if normalize_url(url)}
+    normalized_recommended = [normalize_url(url) for url in recommended_urls[:k] if normalize_url(url)]
     
     # Count how many relevant assessments are in top k
-    relevant_in_top_k = sum(1 for url in top_k_recommended if url in relevant_urls)
+    relevant_in_top_k = sum(1 for url in normalized_recommended if url in normalized_relevant)
     
     # Recall@K = relevant in top K / total relevant
-    recall = relevant_in_top_k / len(relevant_urls)
+    recall = relevant_in_top_k / len(normalized_relevant) if normalized_relevant else 0.0
     return recall
 
 
@@ -141,15 +163,20 @@ def evaluate_mean_recall_at_k(k=10, train_data_path=None):
         # Get recommended URLs
         recommended_urls = results["url"].tolist()
         
-        # Calculate Recall@K
+        # Calculate Recall@K (with URL normalization)
         recall = calculate_recall_at_k(recommended_urls, relevant_urls, k)
+        
+        # Count matches with normalization
+        normalized_relevant = {normalize_url(url) for url in relevant_urls if normalize_url(url)}
+        normalized_recommended = [normalize_url(url) for url in recommended_urls[:k] if normalize_url(url)]
+        relevant_in_top_k = sum(1 for url in normalized_recommended if url in normalized_relevant)
         
         query_results.append({
             "query": query,
             "recall@k": recall,
             "relevant_count": len(relevant_urls),
             "recommended_count": len(recommended_urls),
-            "relevant_in_top_k": sum(1 for url in recommended_urls[:k] if url in relevant_urls)
+            "relevant_in_top_k": relevant_in_top_k
         })
         
         print(f"   Query: {query[:50]}...")
