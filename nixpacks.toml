@@ -1,8 +1,9 @@
 # Nixpacks configuration for Railway
 # Optimize build to reduce image size (CPU-only PyTorch)
+# Use python -m pip to ensure pip is found in the Nixpacks environment
 
 [phases.install]
 cmds = [
-  "pip install --upgrade pip",
-  "pip install --no-cache-dir -r requirements.txt"
+  "python -m pip install --upgrade pip --no-cache-dir",
+  "python -m pip install --no-cache-dir -r requirements.txt"
 ]
