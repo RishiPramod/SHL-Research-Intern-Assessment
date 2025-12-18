@@ -14,6 +14,7 @@ import pandas as pd
 import time
 import re
 from pathlib import Path
+from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import json
 
