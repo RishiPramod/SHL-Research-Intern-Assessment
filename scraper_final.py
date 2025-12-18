@@ -25,19 +25,32 @@ def get_page(session, start=0, retries=3):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
     }
     
     for attempt in range(retries):
         try:
-            response = session.get(url, headers=headers, timeout=45)
+            response = session.get(url, headers=headers, timeout=60, allow_redirects=True)
             response.raise_for_status()
             return response.text
+        except requests.exceptions.Timeout:
+            if attempt < retries - 1:
+                wait_time = (attempt + 1) * 3
+                print(f"      Timeout, waiting {wait_time}s before retry {attempt + 1}/{retries}...")
+                time.sleep(wait_time)
+            else:
+                print(f"      Timeout after {retries} attempts")
+                return None
         except Exception as e:
             if attempt < retries - 1:
-                print(f"      Retry {attempt + 1}/{retries} for start={start}...")
-                time.sleep(2)
+                wait_time = (attempt + 1) * 2
+                print(f"      Error: {str(e)[:50]}, waiting {wait_time}s before retry {attempt + 1}/{retries}...")
+                time.sleep(wait_time)
             else:
-                print(f"      Error fetching page start={start}: {e}")
+                print(f"      Error after {retries} attempts: {str(e)[:100]}")
                 return None
     
     return None
@@ -128,31 +141,11 @@ def extract_assessments_from_table(soup):
     return assessments
 
 
-def get_total_pages(soup):
-    """Extract total number of pages from pagination."""
-    pagination = soup.find('ul', class_='pagination')
-    if not pagination:
-        return 32  # Based on user info: last page is start=372, so 32 pages
-    
-    # Find all page links (including the last visible one)
-    page_links = pagination.find_all('a', class_='pagination__link')
-    
-    # Look for the last numbered page link
-    max_start = 0
-    for link in page_links:
-        href = link.get('href', '')
-        match = re.search(r'start=(\d+)', href)
-        if match:
-            start_val = int(match.group(1))
-            max_start = max(max_start, start_val)
-    
-    if max_start > 0:
-        total = (max_start // ITEMS_PER_PAGE) + 1
-        print(f"      Detected {total} pages (last start={max_start})")
-        return total
-    
-    # If we can't detect, use 32 (based on user info: start=372 is last page)
-    print(f"      Could not detect from pagination, using 32 pages (last page start=372)")
+def get_total_pages(session):
+    """Extract total number of pages."""
+    # Based on user info: last page is start=372, so 32 pages total
+    # We'll use this directly to avoid extra requests
+    print(f"      Using 32 pages (last page start=372) based on known structure")
     return 32
 
 
@@ -222,25 +215,22 @@ def scrape_shl_catalogue():
     seen_urls = set()
     
     # Get first page to determine total pages
-    print("Step 1: Fetching first page to determine total pages...")
-    html = get_page(session, start=0)
-    if not html:
-        print("ERROR: Could not fetch first page")
-        return None
-    
-    soup = BeautifulSoup(html, 'html.parser')
-    total_pages = get_total_pages(soup)
-    print(f"   Found {total_pages} pages")
+    print("Step 1: Determining total pages...")
+    total_pages = get_total_pages(session)
+    print(f"   Will scrape {total_pages} pages")
     
     # Scrape all pages
     print(f"\nStep 2: Scraping {total_pages} pages...")
+    failed_pages = []
+    
     for page in range(total_pages):
         start = page * ITEMS_PER_PAGE
-        print(f"   Page {page + 1}/{total_pages} (start={start})...")
+        print(f"   Page {page + 1}/{total_pages} (start={start})...", end=' ', flush=True)
         
-        html = get_page(session, start=start)
+        html = get_page(session, start=start, retries=2)  # Reduce retries to speed up
         if not html:
-            print(f"      Skipping page {page + 1}")
+            print(f"FAILED - will retry later")
+            failed_pages.append((page + 1, start))
             continue
         
         soup = BeautifulSoup(html, 'html.parser')
@@ -252,29 +242,50 @@ def scrape_shl_catalogue():
                 seen_urls.add(assessment['url'])
                 all_assessments.append(assessment)
         
-        print(f"      Found {len(page_assessments)} assessments on this page")
-        time.sleep(1)  # Be respectful
+        print(f"✓ {len(page_assessments)} assessments")
+        time.sleep(0.8)  # Slightly faster
+    
+    # Retry failed pages
+    if failed_pages:
+        print(f"\n   Retrying {len(failed_pages)} failed pages...")
+        for page_num, start in failed_pages:
+            print(f"   Retry: Page {page_num} (start={start})...", end=' ', flush=True)
+            html = get_page(session, start=start, retries=3)
+            if html:
+                soup = BeautifulSoup(html, 'html.parser')
+                page_assessments = extract_assessments_from_table(soup)
+                for assessment in page_assessments:
+                    if assessment['url'] not in seen_urls:
+                        seen_urls.add(assessment['url'])
+                        all_assessments.append(assessment)
+                print(f"✓ {len(page_assessments)} assessments")
+            else:
+                print(f"FAILED again")
+            time.sleep(1)
     
     print(f"\nStep 3: Collected {len(all_assessments)} unique assessments")
     
     # Extract details from each assessment page (optional - can skip for speed)
-    print(f"\nStep 4: Extracting detailed information...")
-    print("   This will take 15-20 minutes for {len(all_assessments)} assessments...")
-    print("   You can skip this step and fill details later if needed\n")
+    print(f"\nStep 4: Extracting detailed information (optional)...")
+    print(f"   This will take 15-20 minutes for {len(all_assessments)} assessments...")
+    print("   Skipping detail extraction for now - you can add it later if needed")
+    print("   Basic info (name, URL, test type) is sufficient for recommendations\n")
     
-    for i, assessment in enumerate(all_assessments, 1):
-        if i % 20 == 0:
-            print(f"   Progress: {i}/{len(all_assessments)} ({i*100//len(all_assessments)}%)")
-        
-        # Extract details from detail page
-        details = extract_details_from_page(session, assessment['url'])
-        assessment.update(details)
-        
-        # Rate limiting
-        if i % 10 == 0:
-            time.sleep(1.5)
-        else:
-            time.sleep(0.7)
+    # Skip detail extraction for now to speed up
+    # Uncomment below to enable detail extraction:
+    # for i, assessment in enumerate(all_assessments, 1):
+    #     if i % 20 == 0:
+    #         print(f"   Progress: {i}/{len(all_assessments)} ({i*100//len(all_assessments)}%)")
+    #     
+    #     # Extract details from detail page
+    #     details = extract_details_from_page(session, assessment['url'])
+    #     assessment.update(details)
+    #     
+    #     # Rate limiting
+    #     if i % 10 == 0:
+    #         time.sleep(1.5)
+    #     else:
+    #         time.sleep(0.7)
     
     # Create DataFrame
     df = pd.DataFrame(all_assessments)
