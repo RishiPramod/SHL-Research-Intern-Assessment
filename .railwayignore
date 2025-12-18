@@ -1,0 +1,29 @@
+# Ignore unnecessary files from Railway build
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+.git/
+.gitignore
+.env
+.venv/
+venv/
+ENV/
+env/
+*.md
+!README.md
+Gen_AI Dataset.xlsx
+predictions.csv
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

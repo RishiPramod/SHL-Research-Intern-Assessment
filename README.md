@@ -139,10 +139,15 @@ Deploy on Railway by connecting your GitHub repository. The app will auto-deploy
 
 1. Connect your GitHub repository to Railway
 2. Railway automatically detects `Procfile` and `railway.json`
-3. Dependencies are installed from `requirements.txt`
+3. Dependencies are installed from `requirements.txt` (using CPU-only PyTorch for smaller image size)
 4. Application starts using `start.py` which reads the `PORT` environment variable
 5. Model and catalogue are loaded at startup (2-3 seconds)
 6. API is ready to serve requests
+
+**Build Optimization:**
+- Uses CPU-only PyTorch to reduce image size from ~8GB to ~2-3GB
+- Excludes unnecessary files via `.railwayignore`
+- Uses `--no-cache-dir` for pip to minimize build artifacts
 
 ## ⚡ Performance
 

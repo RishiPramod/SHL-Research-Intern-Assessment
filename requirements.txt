@@ -1,10 +1,12 @@
-torch
+# Use CPU-only PyTorch to reduce image size (saves ~2GB)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
 numpy<2.0
 sentence-transformers
 scikit-learn
 pandas
 fastapi
-uvicorn
+uvicorn[standard]
 requests
 beautifulsoup4
 jinja2
