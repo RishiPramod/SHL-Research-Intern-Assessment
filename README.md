@@ -16,18 +16,21 @@ A semantic similarity-based recommendation system that matches job descriptions 
 ### Local Development
 
 1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run the FastAPI server:
+1. Run the FastAPI server:
+
 ```bash
 uvicorn api:app --reload
 ```
 
-3. Access the web UI at `http://localhost:8000`
+1. Access the web UI at `http://localhost:8000`
 
-4. Test the API:
+1. Test the API:
+
 ```bash
 curl -X POST "http://localhost:8000/recommend" \
   -H "Content-Type: application/json" \
@@ -37,13 +40,14 @@ curl -X POST "http://localhost:8000/recommend" \
 ### Streamlit App
 
 Run the Streamlit application for interactive testing:
+
 ```bash
 streamlit run app.py
 ```
 
 ## Project Structure
 
-```
+```text
 .
 ├── api.py                 # FastAPI REST API
 ├── app.py                 # Streamlit application
@@ -59,7 +63,7 @@ streamlit run app.py
 ├── utils/
 │   └── text_utils.py      # URL extraction utilities
 ├── requirements.txt       # Python dependencies
-├── Procfile              # Heroku/Railway deployment
+├── Procfile              # Railway deployment
 ├── Dockerfile            # Docker deployment
 └── APPROACH_DOCUMENT.md   # 2-page approach document
 ```
@@ -67,9 +71,11 @@ streamlit run app.py
 ## API Endpoints
 
 ### POST /recommend
+
 Get assessment recommendations for a job description.
 
 **Request**:
+
 ```json
 {
   "query": "Software Engineer role requiring strong problem solving"
@@ -77,6 +83,7 @@ Get assessment recommendations for a job description.
 ```
 
 **Response**:
+
 ```json
 {
   "recommended_assessments": [
@@ -94,9 +101,11 @@ Get assessment recommendations for a job description.
 ```
 
 ### GET /health
+
 Health check endpoint.
 
 **Response**:
+
 ```json
 {
   "status": "healthy"
@@ -104,17 +113,12 @@ Health check endpoint.
 ```
 
 ### GET /
+
 Web UI for interactive testing.
 
 ## Deployment
 
-See `DEPLOYMENT_GUIDE.md` for detailed deployment instructions.
-
-Quick deploy options:
-- **Railway**: Connect GitHub repo, auto-deploys
-- **Render**: Connect GitHub repo, set start command
-- **Heroku**: Use Procfile, push to Heroku
-- **Docker**: Build and run container
+Deploy on Railway by connecting your GitHub repository. The app will auto-deploy using the `Procfile` and `railway.json` configuration.
 
 ## Performance
 
@@ -126,8 +130,6 @@ Quick deploy options:
 ## Documentation
 
 - **Approach Document**: `APPROACH_DOCUMENT.md` - Complete 2-page approach and optimization details
-- **Deployment Guide**: `DEPLOYMENT_GUIDE.md` - Deployment instructions and URLs
-- **Submission Info**: `SUBMISSION_INFO.md` - Submission requirements and URLs
 
 ## License
 
