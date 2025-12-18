@@ -1,6 +1,8 @@
 from typing import Dict, List
 
 import numpy as np
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -81,13 +83,14 @@ def recommend(payload: RecommendRequest) -> RecommendResponse:
     """
     Main recommendation endpoint.
 
-    It takes a natural‑language query or a JD URL and returns up to
-    10 recommended assessments.
+    It takes a natural‑language query or a JD URL and returns
+    minimum 5, maximum 10 recommended assessments.
     """
     query = payload.query.strip()
     if not query:
         raise HTTPException(status_code=400, detail="Query must be a non‑empty string.")
 
+    # Get recommendations (request up to 10, but ensure minimum 5)
     results = recommend_assessments(
         catalogue=CATALOGUE,
         assessment_embeddings=EMBEDDINGS,
@@ -97,8 +100,50 @@ def recommend(payload: RecommendRequest) -> RecommendResponse:
     )
 
     if results.empty:
-        # This should not happen in practice, but keep the contract:
         raise HTTPException(status_code=500, detail="No assessments available.")
+
+    # Ensure minimum 5 recommendations (requirement: minimum 5, maximum 10)
+    # If balanced selection returned fewer than 5, get top-k by similarity to fill
+    if len(results) < 5:
+        # Get top recommendations by similarity (without balanced selection)
+        query_embedding = MODEL.encode(
+            query,
+            normalize_embeddings=True,
+        ).reshape(1, -1)
+        similarities = cosine_similarity(query_embedding, EMBEDDINGS)[0]
+        
+        # Get top 10 by similarity
+        top_indices = similarities.argsort()[-10:][::-1]
+        fallback_results = CATALOGUE.iloc[top_indices].copy()
+        fallback_results["relevance_score"] = similarities[top_indices]
+        fallback_results = fallback_results.reset_index(drop=True)
+        
+        # Combine with existing results, removing duplicates
+        existing_urls = set(results["url"].tolist())
+        additional_results = []
+        for _, row in fallback_results.iterrows():
+            if row["url"] not in existing_urls:
+                additional_results.append(row)
+                existing_urls.add(row["url"])
+                if len(results) + len(additional_results) >= 10:
+                    break
+        
+        # Combine results
+        if additional_results:
+            additional_df = pd.DataFrame(additional_results)
+            results = pd.concat([results, additional_df], ignore_index=True)
+        
+        # Ensure we have at least 5 (or as many as available if catalogue is small)
+        min_results = min(5, len(CATALOGUE))
+        if len(results) < min_results:
+            # If still not enough, take top by similarity
+            top_indices = similarities.argsort()[-min_results:][::-1]
+            results = CATALOGUE.iloc[top_indices].copy()
+            results["relevance_score"] = similarities[top_indices]
+            results = results.reset_index(drop=True)
+
+    # Limit to maximum 10
+    results = results.head(10)
 
     recs: List[AssessmentResponse] = []
     for _, row in results.iterrows():
