@@ -29,6 +29,78 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Utility helpers
+
+
+def _safe_duration_minutes(row: pd.Series) -> int:
+    """
+    Safely extract the duration in minutes from a catalogue row.
+
+    Many real-world catalogues have missing or non-numeric duration values.
+    For robustness in production, we:
+    - Prefer the normalised `duration_minutes` column
+    - Fall back to the raw `duration` column
+    - Treat missing/invalid values as 0 instead of failing the whole request
+    """
+    value = row.get("duration_minutes", row.get("duration", 0))
+
+    # Handle pandas NaN / None
+    try:
+        if pd.isna(value):
+            return 0
+    except TypeError:
+        # Non-numeric types will be handled below
+        pass
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        logger.warning(f"Invalid duration value encountered: {value!r}. Defaulting to 0.")
+        return 0
+
+
+def _safe_test_type(row: pd.Series) -> List[str]:
+    """
+    Safely extract test_type as a list of strings.
+
+    Ensures that even if the underlying CSV has strings or nulls,
+    the API contract (List[str]) is respected.
+    """
+    raw = row.get("test_type", [])
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [str(t) for t in raw if t]
+    if isinstance(raw, str):
+        # Single type encoded as string
+        return [raw] if raw.strip() else []
+    # Fallback for unexpected types
+    return []
+
+
+def _safe_str(value: object, default: str = "") -> str:
+    """
+    Safely cast a value to string.
+
+    Handles common messy catalogue values such as NaN, None, or numeric types.
+    Ensures Pydantic always receives a proper `str`, avoiding validation errors.
+    """
+    try:
+        # Treat pandas NaN / None as missing
+        if value is None:
+            return default
+        try:
+            if isinstance(value, float) and pd.isna(value):
+                return default
+        except TypeError:
+            # Non-numeric types will be handled by str() below
+            pass
+        text = str(value)
+        return text if text is not None else default
+    except Exception:
+        return default
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title=config.API_TITLE,
@@ -286,21 +358,21 @@ def recommend(payload: RecommendRequest) -> RecommendResponse:
     # Convert DataFrame rows to response models
     recs: List[AssessmentResponse] = []
     for _, row in results.iterrows():
-        try:
-            recs.append(
-                AssessmentResponse(
-                    url=row.get("url", ""),
-                    name=row.get("name", ""),
-                    adaptive_support=row.get("adaptive_support", "No"),
-                    description=row.get("description", ""),
-                    duration=int(row.get("duration_minutes", row.get("duration", 0))),
-                    remote_support=row.get("remote_support", "Yes"),
-                    test_type=row.get("test_type", []),
-                )
-            )
-        except (ValueError, KeyError) as e:
-            logger.warning(f"Skipping invalid assessment row: {e}")
-            continue
+        duration_minutes = _safe_duration_minutes(row)
+        test_type = _safe_test_type(row)
+
+        # We deliberately avoid raising here – a single bad row should not
+        # cause the whole request to fail.
+        rec = AssessmentResponse(
+            url=_safe_str(row.get("url", "")),
+            name=_safe_str(row.get("name", "")),
+            adaptive_support=_safe_str(row.get("adaptive_support", "No") or "No", "No"),
+            description=_safe_str(row.get("description", "")),
+            duration=duration_minutes,
+            remote_support=_safe_str(row.get("remote_support", "Yes") or "Yes", "Yes"),
+            test_type=test_type,
+        )
+        recs.append(rec)
 
     if not recs:
         raise HTTPException(
