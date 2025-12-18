@@ -37,20 +37,11 @@ curl -X POST "http://localhost:8000/recommend" \
   -d '{"query": "Software Engineer role requiring strong problem solving"}'
 ```
 
-### Streamlit App
-
-Run the Streamlit application for interactive testing:
-
-```bash
-streamlit run app.py
-```
-
 ## Project Structure
 
 ```text
 .
-├── api.py                 # FastAPI REST API
-├── app.py                 # Streamlit application
+├── api.py                 # FastAPI REST API with web UI
 ├── data/
 │   ├── catalogue.csv      # Assessment catalogue
 │   └── catalogue.py       # Catalogue loader
@@ -64,7 +55,9 @@ streamlit run app.py
 │   └── text_utils.py      # URL extraction utilities
 ├── requirements.txt       # Python dependencies
 ├── Procfile              # Railway deployment
-├── Dockerfile            # Docker deployment
+├── railway.json          # Railway configuration
+├── start.py              # Startup script
+├── generate_predictions.py # Generate predictions CSV
 └── APPROACH_DOCUMENT.md   # 2-page approach document
 ```
 
