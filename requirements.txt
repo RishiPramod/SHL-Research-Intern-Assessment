@@ -1,7 +1,7 @@
 # Use CPU-only PyTorch to reduce image size (saves ~2GB)
 # PyTorch 2.2.0+cpu is compatible with transformers and sentence-transformers
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.0+cpu
+torch==2.7.1+cpu
 numpy<2.0
 sentence-transformers
 scikit-learn
