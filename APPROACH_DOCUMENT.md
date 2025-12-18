@@ -137,6 +137,28 @@ The system uses a semantic similarity-based approach with the following componen
 4. **Balanced Selection**: Prioritize diversity without sacrificing relevance
 5. **FastAPI**: Modern async framework for high-performance API
 
+## Evaluation & Metrics
+
+### Mean Recall@K Implementation
+The system is evaluated using **Mean Recall@K** metric as specified in the requirements:
+
+**Recall@K** = (Number of relevant assessments in top K) / (Total relevant assessments for the query)
+
+**Mean Recall@K** = (1/N) × Σ Recall@K_i for all N queries
+
+### Evaluation Process
+1. **Train Data**: Used labeled train data (10 queries with ground truth assessments)
+2. **Evaluation Script**: `evaluate.py` implements Mean Recall@K calculation
+3. **Iteration**: Used train data to validate and improve the recommendation pipeline
+4. **Test Data**: Generated predictions for unlabeled test set (9 queries)
+
+### Evaluation Results
+- **Metric**: Mean Recall@10 (evaluated on top 10 recommendations)
+- **Method**: For each query, calculate how many ground truth assessments appear in top 10 recommendations
+- **Optimization**: Balanced selection strategy was tuned to maximize recall while maintaining diversity
+
+The evaluation script (`evaluate.py`) can be run to compute Mean Recall@K on the labeled train data, allowing iterative improvement of the recommendation system.
+
 ## Future Optimization Opportunities
 
 1. **Model Upgrade**: Experiment with larger models (e.g., `all-mpnet-base-v2`) for better accuracy
